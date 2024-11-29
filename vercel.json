@@ -2,7 +2,7 @@
   "version": 2,
   "builds": [
     {
-      "src": "api/**/*.js",  // This will include all your serverless functions under `api/`
+      "src": "api/**/*.js",
       "use": "@vercel/node"
     },
     {

@@ -20,7 +20,7 @@ const MEAT_KEYWORDS = ['chicken', 'beef', 'pork', 'lamb', 'turkey', 'duck', 'fis
 
 // Middleware
 app.use(cors({
-    origin: 'http://recette-magique.vercel.app', // Update to your frontend URL
+    origin: 'https://recette-magique.vercel.app', // Update to your frontend URL
     credentials: true, // Allow cookies to be sent
 }));
 

@@ -5,7 +5,6 @@ const bcrypt = require('bcrypt');
 const session = require('express-session');
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
-const preferencesRoutes = require('./routes/preferencesRoutes.js'); // Import the preferences routes
 
 require('dotenv').config(); // Load environment variables
 

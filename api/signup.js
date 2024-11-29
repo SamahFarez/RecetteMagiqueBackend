@@ -1,5 +1,5 @@
 import bcrypt from 'bcrypt';
-import User from '../../models/User';
+import User from '../models/User';
 import crypto from 'crypto';
 import nodemailer from 'nodemailer';
 

@@ -1,4 +1,4 @@
-import User from '../../models/User';
+import User from '../models/User';
 
 export default async (req, res) => {
     const token = req.query.token;

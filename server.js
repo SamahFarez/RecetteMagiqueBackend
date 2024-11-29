@@ -14,7 +14,7 @@ const port = 5000;
 
 // Middleware
 app.use(cors({
-    origin: 'http://localhost:3000', // Change to your frontend URL
+    origin: 'https://recette-magique.vercel.app/', // Change to your frontend URL
     credentials: true // Allow cookies to be sent
 }));
 

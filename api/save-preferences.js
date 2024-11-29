@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import User from '../../models/User';  // Import the User model
+import User from '../models/User';  // Import the User model
 import { getSession } from 'next-auth/client';  // For session management
 
 const mongoURI = process.env.MONGO_URI || 'mongodb+srv://hh:hhhhhhhh@cluster0.5eb3y.mongodb.net/recette?retryWrites=true&w=majority';

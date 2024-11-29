@@ -106,7 +106,7 @@ const handleSignup = async (req, res) => {
 
         // Prepare the email content
         const mailOptions = {
-            from: 'samah.ikramfarez@gmail.com',  // Your email address
+            from: 'recette.magique.cy@gmail.com',  // Your email address
             to: email,  // Recipient's email address
             subject: 'Email Confirmation',
             html: `<h1>Welcome ${fullName}!</h1>

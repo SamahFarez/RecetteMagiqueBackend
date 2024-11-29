@@ -5,6 +5,7 @@ const bcrypt = require('bcrypt');
 const session = require('express-session');
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
+const preferencesRoutes = require('./routes/preferencesRoutes.js'); // Import the preferences routes
 
 require('dotenv').config(); // Load environment variables
 
@@ -13,7 +14,7 @@ const port = 5000;
 
 // Middleware
 app.use(cors({
-    origin: 'https://recette-magique.vercel.app/', // Change to your frontend URL
+    origin: 'http://recette-magique.vercel.app', // Change to your frontend URL
     credentials: true // Allow cookies to be sent
 }));
 
@@ -208,7 +209,7 @@ app.get('/confirm/:token', async (req, res) => {
         if (user.isVerified) {
             return res.status(200).json({
                 message: 'Email already confirmed. You can now login.',
-                redirectUrl: 'https://recette-magique.vercel.app/login',  // Redirect to login page
+                redirectUrl: 'http://recette-magique.vercel.app/login',  // Redirect to login page
             });
         }
 
@@ -218,7 +219,7 @@ app.get('/confirm/:token', async (req, res) => {
         await user.save();  // Save the updated user
 
         // Redirect to login page after successful confirmation
-        res.redirect('https://recette-magique.vercel.app/login');  // Redirect user to login page
+        res.redirect('http://recette-magique.vercel.app/login');  // Redirect user to login page
 
     } catch (error) {
         console.error('Error confirming token:', error);

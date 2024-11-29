@@ -158,7 +158,7 @@ app.post('/signup', async (req, res) => {
 
         await newUser.save();
 
-        const confirmationLink = `https://recettemagique.onrender.com:${PORT}/confirm/${token}`;
+        const confirmationLink = `https://recettemagique.onrender.com/confirm/${token}`;
 
         const mailOptions = {
             from: 'recette.magique.cy@gmail.com',

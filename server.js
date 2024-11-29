@@ -9,7 +9,6 @@ const axios = require('axios');
 
 require('dotenv').config(); // Load environment variables
 
-const preferencesRoutes = require('./routes/preferencesRoutes.js'); // Import preferences routes
 const User = require('./models/User'); // Import User schema
 
 const app = express();

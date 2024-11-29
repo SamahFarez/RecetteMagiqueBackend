@@ -5,32 +5,38 @@ const bcrypt = require('bcrypt');
 const session = require('express-session');
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
-const preferencesRoutes = require('./routes/preferencesRoutes.js'); // Import the preferences routes
+const axios = require('axios');
 
 require('dotenv').config(); // Load environment variables
 
+const preferencesRoutes = require('./routes/preferencesRoutes.js'); // Import preferences routes
+const User = require('./models/User'); // Import User schema
+
 const app = express();
-const port = 5000;
+const PORT = process.env.PORT || 5000;
+
+// Constants
+const SPOONACULAR_API_KEY = 'e1b5c0675f514fcb86cbecbeb5fbee3f'; // Replace with your Spoonacular API key
+const MEAT_KEYWORDS = ['chicken', 'beef', 'pork', 'lamb', 'turkey', 'duck', 'fish', 'seafood'];
 
 // Middleware
 app.use(cors({
-    origin: 'http://recette-magique.vercel.app', // Change to your frontend URL
-    credentials: true // Allow cookies to be sent
+    origin: 'http://recette-magique.vercel.app', // Update to your frontend URL
+    credentials: true, // Allow cookies to be sent
 }));
 
-// Configure express-session middleware
+app.use(express.json());
+
 app.use(session({
-    secret:'123', // Use env variable for a better secret in production
+    secret: '123', // Use env variable for a better secret in production
     resave: true,
     saveUninitialized: true,
     cookie: {
         secure: false, // Set to true if using HTTPS
         httpOnly: true,
-        maxAge: 1000 * 60 * 60 * 24 // 1 day
-    }
+        maxAge: 1000 * 60 * 60 * 24, // 1 day
+    },
 }));
-
-app.use(express.json());
 
 // MongoDB Connection
 const mongoURI = 'mongodb+srv://hh:hhhhhhhh@cluster0.5eb3y.mongodb.net/recette?retryWrites=true&w=majority';
@@ -39,8 +45,16 @@ mongoose.connect(mongoURI, { useNewUrlParser: true, useUnifiedTopology: true })
     .then(() => console.log('Connected to MongoDB Atlas'))
     .catch((err) => console.error('Error connecting to MongoDB Atlas: ', err));
 
-// Models
-const User = require('./models/User'); // Import User schema
+// Helper functions
+const filterNonVegetarianIngredients = (ingredients) => {
+    return ingredients.filter(ingredient => !MEAT_KEYWORDS.includes(ingredient.toLowerCase()));
+};
+
+const cleanRecipeName = (title) => {
+    return title.replace(/^How to Make\s+/i, ''); // Remove 'How to' at the beginning of the title
+};
+
+// Routes
 
 // Save preferences route
 app.post('/api/save-preferences', async (req, res) => {
@@ -48,83 +62,122 @@ app.post('/api/save-preferences', async (req, res) => {
     try {
         const { preferences } = req.body;
 
-        // Make sure the user is logged in and has a valid session
         if (!req.session.user) {
             return res.status(401).json({ error: 'Unauthorized. Please log in first.' });
         }
 
-        // Find the user and update their food preferences
         const user = await User.findOne({ email: req.session.user.email });
         if (!user) {
             return res.status(404).json({ error: 'User not found' });
         }
 
-        // Update the user's preferences in the database
         user.foodPreferences = preferences;
         await user.save();
 
         res.status(200).json({ message: 'Preferences saved successfully!' });
-
     } catch (error) {
         console.error('Error saving preferences:', error);
         res.status(500).json({ error: 'Server error' });
     }
 });
 
+// Fetch recipes route
+app.get('/fetch-recipes/:ingredients/:diet?', async (req, res) => {
+    const ingredientsParam = req.params.ingredients;
+    const dietParam = req.params.diet ? req.params.diet.toLowerCase() : undefined;
+    let ingredients = ingredientsParam.split(',');
 
-// Create reusable transporter object using Gmail service
-const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-        user: 'recette.magique.cy@gmail.com', // Your email address
-        pass: 'jyoj afjs utcm swwe'           // Your email password or app password (for Gmail)
+    if (!ingredients || ingredients.length === 0) {
+        return res.status(400).json({ error: 'Please provide valid ingredients.' });
+    }
+
+    if (dietParam === 'vegetarian') {
+        ingredients = filterNonVegetarianIngredients(ingredients);
+    }
+
+    if (ingredients.length === 0) {
+        return res.status(400).json({ error: 'No valid vegetarian ingredients were provided.' });
+    }
+
+    const ingredientsString = ingredients.join(',');
+
+    try {
+        const response = await axios.get(
+            `https://api.spoonacular.com/recipes/findByIngredients?ingredients=${ingredientsString}&apiKey=${SPOONACULAR_API_KEY}${dietParam ? `&diet=${dietParam}` : ''}`
+        );
+
+        if (response.data.length === 0) {
+            return res.status(404).send('No recipes found.');
+        }
+
+        const detailedRecipes = await Promise.all(response.data.map(async recipe => {
+            const recipeDetailResponse = await axios.get(`https://api.spoonacular.com/recipes/${recipe.id}/information?apiKey=${SPOONACULAR_API_KEY}`);
+            let { title, readyInMinutes, instructions, extendedIngredients } = recipeDetailResponse.data;
+
+            title = cleanRecipeName(title);
+            const usedIngredients = extendedIngredients.map(ing => ing.name).join(', ');
+
+            return `Recipe Name: ${title}\nCooking Time: ${readyInMinutes} minutes\nIngredients: ${usedIngredients}\nInstructions: ${instructions}\n\n`;
+        }));
+
+        const filteredRecipes = detailedRecipes.filter(recipe => recipe !== null);
+
+        if (filteredRecipes.length === 0) {
+            return res.status(404).send('No suitable recipes found.');
+        }
+
+        res.send(`<pre>${filteredRecipes.join('\n\n')}</pre>`);
+    } catch (error) {
+        console.error('Error fetching recipes:', error.message);
+        res.status(500).json({ error: 'Error fetching recipes from API.' });
     }
 });
 
-// Signup handler
-const handleSignup = async (req, res) => {
+// Authentication and User Management Routes (Signup, Login, Confirm Email)
+
+// Signup
+app.post('/signup', async (req, res) => {
     try {
         const { fullName, email, password, foodPreferences } = req.body;
 
-        // Check if user already exists
         const existingUser = await User.findOne({ email });
         if (existingUser) {
             return res.status(400).json({ message: 'User already exists' });
         }
 
-        // Hash the password before saving it
         const hashedPassword = await bcrypt.hash(password, 10);
-
-        // Generate a random token for email verification
         const token = crypto.randomBytes(32).toString('hex');
 
-        // Create a new user and assign the token
         const newUser = new User({
             full_name: fullName,
             email,
             password: hashedPassword,
-            token,  // Assign the token here
-            isVerified: false,  // Initially, the user is not verified
-            foodPreferences: foodPreferences || {}, // Default to empty object if not provided
+            token,
+            isVerified: false,
+            foodPreferences: foodPreferences || {},
         });
 
-        // Save the new user to the database
         await newUser.save();
 
-        // Create the confirmation link with the token
-        const confirmationLink = `http://localhost:5000/confirm/${token}`;
+        const confirmationLink = `http://localhost:${PORT}/confirm/${token}`;
 
-        // Prepare the email content
         const mailOptions = {
-            from: 'recette.magique.cy@gmail.com',  // Your email address
-            to: email,  // Recipient's email address
+            from: 'recette.magique.cy@gmail.com',
+            to: email,
             subject: 'Email Confirmation',
             html: `<h1>Welcome ${fullName}!</h1>
                    <p>Please confirm your email by clicking the link: 
-                   <a href="${confirmationLink}">Confirm Email</a></p>`
+                   <a href="${confirmationLink}">Confirm Email</a></p>`,
         };
 
-        // Send the email with the confirmation link
+        const transporter = nodemailer.createTransport({
+            service: 'gmail',
+            auth: {
+                user: 'recette.magique.cy@gmail.com',
+                pass: 'jyoj afjs utcm swwe',
+            },
+        });
+
         transporter.sendMail(mailOptions, (error, info) => {
             if (error) {
                 console.error('Error sending email:', error);
@@ -133,15 +186,14 @@ const handleSignup = async (req, res) => {
             console.log('Confirmation email sent:', info.response);
             res.status(200).json({ message: 'User registered successfully, please confirm your email' });
         });
-
     } catch (error) {
         console.error('Error during signup:', error);
         res.status(500).json({ message: 'Server error' });
     }
-};
+});
 
-// Login handler
-const handleLogin = async (req, res) => {
+// Login
+app.post('/login', async (req, res) => {
     try {
         const { email, password } = req.body;
 
@@ -159,31 +211,45 @@ const handleLogin = async (req, res) => {
             return res.status(401).json({ error: 'Incorrect password' });
         }
 
-        // Create session if everything is fine
         req.session.user = {
             email: user.email,
             fullName: user.full_name,
         };
 
-        // Check if the user has preferences
-        if (Object.keys(user.foodPreferences).length === 0) {
-            return res.status(200).json({
-                message: 'Login successful',
-                redirectUrl: '/preferences',  // Relative path (NOT full URL)
-            });
-        }
-
-        res.status(200).json({
-            message: 'Login successful',
-            redirectUrl: '/dashboard',  // Relative path to dashboard
-        });
+        const redirectUrl = Object.keys(user.foodPreferences).length === 0 ? '/preferences' : '/dashboard';
+        res.status(200).json({ message: 'Login successful', redirectUrl });
     } catch (error) {
         console.error('Error during login:', error);
         res.status(500).json({ error: 'Server error' });
     }
-};
+});
 
-// Dashboard route
+// Email confirmation
+app.get('/confirm/:token', async (req, res) => {
+    try {
+        const token = req.params.token;
+
+        const user = await User.findOne({ token });
+        if (!user) {
+            return res.status(400).json({ message: 'Invalid token or user already verified' });
+        }
+
+        if (user.isVerified) {
+            return res.redirect('http://recette-magique.vercel.app/login');
+        }
+
+        user.isVerified = true;
+        user.token = null;
+        await user.save();
+
+        res.redirect('http://recette-magique.vercel.app/login');
+    } catch (error) {
+        console.error('Error confirming token:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// Dashboard
 app.get('/dashboard', (req, res) => {
     if (req.session.user) {
         res.json({ message: 'Welcome to the dashboard!', user: req.session.user });
@@ -192,48 +258,7 @@ app.get('/dashboard', (req, res) => {
     }
 });
 
-// Email confirmation endpoint
-app.get('/confirm/:token', async (req, res) => {
-    const token = req.params.token;
-
-    try {
-        // Find the user by the token
-        const user = await User.findOne({ token });
-
-        // If no user is found, or the token doesn't match
-        if (!user) {
-            return res.status(400).json({ message: 'Invalid token or user already verified' });
-        }
-
-        // If the user is already verified, inform them
-        if (user.isVerified) {
-            return res.status(200).json({
-                message: 'Email already confirmed. You can now login.',
-                redirectUrl: 'http://recette-magique.vercel.app/login',  // Redirect to login page
-            });
-        }
-
-        // Mark the user as verified
-        user.isVerified = true;
-        user.token = null;  // Clear the token after successful verification
-        await user.save();  // Save the updated user
-
-        // Redirect to login page after successful confirmation
-        res.redirect('http://recette-magique.vercel.app/login');  // Redirect user to login page
-
-    } catch (error) {
-        console.error('Error confirming token:', error);
-        res.status(500).json({ message: 'Server error' });
-    }
-});
-
-// Signup route
-app.post('/signup', handleSignup);
-
-// Login route
-app.post('/login', handleLogin);
-
 // Start the server
-app.listen(port, () => {
-    console.log(`Server running on port ${port}`);
+app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
 });

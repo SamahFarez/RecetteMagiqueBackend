@@ -257,63 +257,6 @@ app.get('/dashboard', (req, res) => {
     }
 });
 
-// CONFIRM PASSWORD //
-
-app.post('/change-password', async (req, res) => {
-    const { userId, oldPassword, newPassword } = req.body;
-
-    // Fetch user from database (mock example)
-    const findUser =  await User.findOne({ where : {userId}})
-
-    // Verify old password
-    const isMatch = bcrypt.compare(oldPassword, findUser.password);
-    if (!isMatch) {
-        return res.status(400).json({ message: 'Incorrect old password.' });
-    }
-
-    if(oldPassword === newPassword) {
-        return res.status(400).json({ message: 'Old password must be different from new password' });
-    }
-    // Hash new password
-    const newHashedPassword = await bcrypt.hash(newPassword, 10);
-
-    // Save new password to database (mock example)
-    await User.updateOne({password: newHashedPassword}).where({userId})
-
-
-    res.status(200).json({ message: 'Password updated successfully.' });
-});
-
-
-
-// Route to download the recipe as a PDF
-app.get('/download-recipe-pdf', async (req, res) => {
-    // Example ingredients for the request
-    const ingredients = ['eggs', 'chicken', 'milk', 'rice', 'broccoli'];
-
-    const recipes = await fetchRecipes(ingredients);
-
-    if (recipes.length === 0) {
-        return res.status(404).send('No recipes found');
-    }
-
-    const doc = new PDFDocument();
-
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', 'attachment; filename="recipe.pdf"');
-    doc.pipe(res);
-
-    doc.fontSize(18).text('Recipes', { align: 'center' });
-    doc.moveDown();
-
-    recipes.forEach((recipe, index) => {
-        doc.fontSize(14).text(`${index + 1}. ${recipe.title}`);
-        doc.moveDown();
-    });
-
-    doc.end();
-});
-
 // Logout route
 app.post('/logout', (req, res) => {
     req.session.destroy((err) => {

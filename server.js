@@ -20,25 +20,29 @@ const MEAT_KEYWORDS = ['chicken', 'beef', 'pork', 'lamb', 'turkey', 'duck', 'fis
 
 // Middleware
 app.use(cors({
-    origin: 'https://recette-magique.vercel.app', // Update to your frontend URL
-    credentials: true, // Allow cookies to be sent
-}));
-
-app.use(express.json());
-
-app.use(session({
-    secret: '123', // Use env variable for a better secret in production
-    resave: true,
-    saveUninitialized: true,
-    cookie: {
-        secure: false, // Set to true if using HTTPS
-        httpOnly: true,
-        maxAge: 1000 * 60 * 60 * 24, // 1 day
-    },
+    origin: 'https://recette-magique.vercel.app', // Frontend URL
+    credentials: true, // Enable sending cookies with requests
 }));
 
 // MongoDB Connection
 const mongoURI = 'mongodb+srv://hh:hhhhhhhh@cluster0.5eb3y.mongodb.net/recette?retryWrites=true&w=majority';
+
+app.use(express.json());
+
+app.use(session({
+    secret: process.env.SESSION_SECRET || '1234', // Use an env variable for production
+    resave: true,
+    saveUninitialized: false,
+    store: MongoStore.create({
+        mongoUrl: mongoURI, // Use your MongoDB URI
+    }),
+    cookie: {
+        secure: true, // Set this to true if your site uses HTTPS
+        httpOnly: true,
+        sameSite: 'none', // Allows cookies to be sent in cross-site requests
+        maxAge: 1000 * 60 * 60 * 24, // 1 day
+    },
+}));
 
 mongoose.connect(mongoURI, { useNewUrlParser: true, useUnifiedTopology: true })
     .then(() => console.log('Connected to MongoDB Atlas'))

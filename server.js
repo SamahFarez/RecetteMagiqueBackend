@@ -20,8 +20,10 @@ const MEAT_KEYWORDS = ['chicken', 'beef', 'pork', 'lamb', 'turkey', 'duck', 'fis
 
 // Middleware
 app.use(cors({
-    origin: 'https://recette-magique.vercel.app', // Frontend URL
-    credentials: true, // Enable sending cookies with requests
+    origin: ['http://localhost:3000', 'https://recette-magique.vercel.app'], // Add all allowed origins here
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    allowedHeaders: ['Content-Type']
 }));
 
 // MongoDB Connection
@@ -30,16 +32,23 @@ const mongoURI = 'mongodb+srv://hh:hhhhhhhh@cluster0.5eb3y.mongodb.net/recette?r
 app.use(express.json());
 
 app.use(session({
-    secret: process.env.SESSION_SECRET || '1234', // Use an env variable for production
-    resave: true,
+    secret: process.env.SESSION_SECRET || '1234',
+    resave: false,  // changed from true to false
     saveUninitialized: false,
     cookie: {
-        secure: true, // Set this to true if your site uses HTTPS
+        secure: process.env.NODE_ENV === 'production', // Fixed the secure setting
         httpOnly: true,
-        sameSite: 'none', // Allows cookies to be sent in cross-site requests
-        maxAge: 1000 * 60 * 60 * 24, // 1 day
+        maxAge: 1000 * 60 * 60 * 24 // 1 day
     },
+    name: 'sessionId' // Add this line to use a custom cookie name
 }));
+
+app.use((req, res, next) => {
+    console.log('Session ID:', req.sessionID);
+    console.log('Session Data:', req.session);
+    next();
+});
+
 
 mongoose.connect(mongoURI, { useNewUrlParser: true, useUnifiedTopology: true })
     .then(() => console.log('Connected to MongoDB Atlas'))
@@ -56,22 +65,28 @@ const cleanRecipeName = (title) => {
 
 // Routes
 
-// Save preferences route
 app.post('/api/save-preferences', async (req, res) => {
+
+// Save preferences routeapp.post('/api/save-preferences', async (req, res) => {
     console.log('Session data:', req.session);
+    console.log('Request body:', req.body);
+
+    // Check if user is logged in
+    if (!req.session.user) {
+        return res.status(401).json({ error: 'User not authenticated' });
+    }
+
     try {
-        const { preferences } = req.body;
+        const { dietType } = req.body; // Changed from preferences to dietType based on your log
 
-        if (!req.session.user) {
-            return res.status(401).json({ error: 'Unauthorized. Please log in first.' });
-        }
-
+        // Find the user in the database
         const user = await User.findOne({ email: req.session.user.email });
         if (!user) {
             return res.status(404).json({ error: 'User not found' });
         }
 
-        user.foodPreferences = preferences;
+        // Update the user's food preferences
+        user.foodPreferences = { dietType }; // Modified to match your request body
         await user.save();
 
         res.status(200).json({ message: 'Preferences saved successfully!' });
@@ -80,6 +95,8 @@ app.post('/api/save-preferences', async (req, res) => {
         res.status(500).json({ error: 'Server error' });
     }
 });
+
+
 
 // Fetch recipes route
 app.get('/fetch-recipes/:ingredients/:diet?', async (req, res) => {
@@ -211,19 +228,28 @@ app.post('/login', async (req, res) => {
             return res.status(401).json({ error: 'Incorrect password' });
         }
 
+        // Save user data in session
         req.session.user = {
             email: user.email,
             fullName: user.full_name,
+            id: user._id // Add this line
         };
+        
+        // Save session explicitly
+        req.session.save((err) => {
+            if (err) {
+                console.error('Session save error:', err);
+                return res.status(500).json({ error: 'Session error' });
+            }
+            const redirectUrl = Object.keys(user.foodPreferences).length === 0 ? '/preferences' : '/dashboard';
+            res.status(200).json({ message: 'Login successful', redirectUrl });
+        });
 
-        const redirectUrl = Object.keys(user.foodPreferences).length === 0 ? '/preferences' : '/dashboard';
-        res.status(200).json({ message: 'Login successful', redirectUrl });
     } catch (error) {
         console.error('Error during login:', error);
         res.status(500).json({ error: 'Server error' });
     }
 });
-
 // Email confirmation
 app.get('/confirm/:token', async (req, res) => {
     try {
@@ -235,14 +261,14 @@ app.get('/confirm/:token', async (req, res) => {
         }
 
         if (user.isVerified) {
-            return res.redirect('http://recette-magique.vercel.app/login');
+            return res.redirect('https://recette-magique.vercel.app/login');
         }
 
         user.isVerified = true;
         user.token = null;
         await user.save();
 
-        res.redirect('http://recette-magique.vercel.app/login');
+        res.redirect('https://recette-magique.vercel.app/login');
     } catch (error) {
         console.error('Error confirming token:', error);
         res.status(500).json({ message: 'Server error' });
@@ -253,9 +279,7 @@ app.get('/confirm/:token', async (req, res) => {
 app.get('/dashboard', (req, res) => {
     if (req.session.user) {
         res.json({ message: 'Welcome to the dashboard!', user: req.session.user });
-    } else {
-        res.status(401).json({ message: 'Unauthorized access' });
-    }
+    } 
 });
 
 // Logout route

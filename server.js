@@ -15,7 +15,7 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Constants
-const SPOONACULAR_API_KEY = 'e1b5c0675f514fcb86cbecbeb5fbee3f'; // Replace with your Spoonacular API key
+const SPOONACULAR_API_KEY = '725e92e0455f4cc5bcf3cf289d5fc86e'; // Replace with your Spoonacular API key
 const MEAT_KEYWORDS = ['chicken', 'beef', 'pork', 'lamb', 'turkey', 'duck', 'fish', 'seafood'];
 
 // Middleware

@@ -33,9 +33,6 @@ app.use(session({
     secret: process.env.SESSION_SECRET || '1234', // Use an env variable for production
     resave: true,
     saveUninitialized: false,
-    store: MongoStore.create({
-        mongoUrl: mongoURI, // Use your MongoDB URI
-    }),
     cookie: {
         secure: true, // Set this to true if your site uses HTTPS
         httpOnly: true,

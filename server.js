@@ -100,6 +100,56 @@ const retrieveSession = async (req, res, next) => {
 
 
 
+app.post("/api/save-preferences", async (req, res) => {
+  console.log('Request body:', req.body);  // This will help debug if the request is reaching the server
+
+  if (!req.session.user) {
+    return res.status(401).json({ error: "User not authenticated" });
+  }
+
+  try {
+    const { dietType } = req.body; // e.g., Halal, Vegan, etc.
+
+    // Find the user in the database
+    const user = await User.findOne({ email: req.session.user.email });
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Update the session with preferences
+    req.session.user.foodPreferences.dietType = dietType;
+
+    // Save the restriction in the UserRestriction table
+    await UserRestriction.findOneAndUpdate(
+      { userId: user._id },
+      { restrictionName: dietType },
+      { upsert: true, new: true }
+    );
+
+    // Sync session data to the Session model in the database (if needed)
+    const session = await Session.findOneAndUpdate(
+      { userId: user._id },
+      { fullName: user.full_name, email: user.email, expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24) },  // Update the session expiration
+      { new: true }
+    );
+
+    // Save the session data to the cookie
+    res.cookie("sessionId", session._id, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",  // Secure cookies for production
+      sameSite: "None",  // For cross-origin cookies
+      expires: session.expiresAt, // Set cookie expiration same as session expiration
+    });
+
+    res.status(200).json({ message: "Preferences saved successfully!" });
+  } catch (error) {
+    console.error("Error saving preferences:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+
+
 // Routes
 app.get('/api/user-preferences', async (req, res) => {
     if (!req.session.user) {

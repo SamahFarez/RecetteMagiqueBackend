@@ -45,7 +45,6 @@ app.use(
       sameSite: "None",  // Required for cross-origin cookies
       domain: ".onrender.com", // Adjust for your domain setup
     },
-    store: MongoStore.create({ mongoUrl: mongoURI, collectionName: "sessions" }),
   })
 );
 
@@ -218,12 +217,13 @@ app.post("/login", async (req, res) => {
     await sessionData.save();
 
     // Set the session cookie
-    res.cookie("sessionId", sessionId, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production", 
-      sameSite: "None", 
-      maxAge: 24 * 60 * 60 * 1000, 
-    });
+res.cookie("sessionId", sessionId, {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production", 
+  sameSite: "None", 
+  maxAge: 24 * 60 * 60 * 1000, // 1 day expiration
+});
+
 
     return res.status(200).json({
       message: "Login successful",

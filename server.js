@@ -10,6 +10,8 @@ const axios = require("axios");
 require("dotenv").config(); // Load environment variables
 
 const User = require("./models/User"); // Import User schema
+const User = require("./models/UserRestriction"); // Import User schema
+const User = require("./models/Restrictions"); // Import User schema
 
 const app = express();
 const PORT = process.env.PORT || 5000;

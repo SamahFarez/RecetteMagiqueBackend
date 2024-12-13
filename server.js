@@ -105,32 +105,38 @@ const filterIngredientsByDietType = (ingredients, dietType) => {
 app.use(
   cors({
     origin: ["http://localhost:3000", "https://recette-magique.vercel.app"],
-    credentials: true,
+    credentials: true, // Allow credentials (cookies) in CORS
     methods: ["GET", "POST", "PUT", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
+
 // MongoDB Connection
 const mongoURI =
   "mongodb+srv://hh:hhhhhhhh@cluster0.5eb3y.mongodb.net/recette?retryWrites=true&w=majority";
 
 app.use(express.json());
 
+const MongoStore = require("connect-mongo");
+
 app.use(
   session({
     secret: process.env.SESSION_SECRET || "1234",
     resave: false,
     saveUninitialized: false,
+    store: MongoStore.create({ mongoUrl: mongoURI }),
     cookie: {
-      secure: process.env.NODE_ENV === 'production', // Only use secure in production
-      sameSite: 'none', // Important for cross-site requests
+      secure: process.env.NODE_ENV === "production",
       httpOnly: true,
-      maxAge: 1000 * 60 * 60 * 24, // 1 day
-      domain: process.env.NODE_ENV === 'production' ? '.onrender.com' : 'localhost'
+      sameSite: "none",
+      domain: ".onrender.com",
+      maxAge: 1000 * 60 * 60 * 24,
     },
-    name: "sessionId",
   })
 );
+
+
+
 app.use((req, res, next) => {
   console.log("Session ID:", req.sessionID);
   console.log("Session Data:", req.session);
@@ -402,14 +408,7 @@ app.post("/login", async (req, res) => {
         return res.status(500).json({ error: "Session error" });
       }
 
-      // Set explicit cookie settings in the response
-      res.cookie('sessionId', req.sessionID, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'none',
-        maxAge: 24 * 60 * 60 * 1000 // 1 day
-      });
-
+      // Redirect to preferences page if dietType is not set
       const redirectUrl = dietType ? "/dashboard" : "/preferences";
       res.status(200).json({
         message: "Login successful",
@@ -422,6 +421,7 @@ app.post("/login", async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 });
+
 
 // Email confirmation
 app.get("/confirm/:token", async (req, res) => {

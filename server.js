@@ -64,6 +64,68 @@ const cleanRecipeName = (title) => {
   return title.replace(/^How to Make\s+/i, ""); // Remove 'How to' at the beginning of the title
 };
 
+const Restrictions = require("./models/Restrictions"); // Import Restrictions schema
+app.get("/fetch-recipes/:ingredients", async (req, res) => {
+  if (!req.session.user) {
+    return res.status(401).json({ error: "User not authenticated" });
+  }
+
+  const ingredientsParam = req.params.ingredients;
+  let ingredients = ingredientsParam.split(",");
+
+  if (!ingredients || ingredients.length === 0) {
+    return res.status(400).json({ error: "Please provide valid ingredients." });
+  }
+
+  try {
+    const user = await User.findOne({ email: req.session.user.email });
+    const userRestriction = await UserRestriction.findOne({ userId: user._id });
+    const dietType = userRestriction ? userRestriction.restrictionName : null;
+
+    if (dietType) {
+      ingredients = filterIngredientsByDietType(ingredients, dietType);
+    }
+
+    console.log("Filtered ingredients:", ingredients);
+
+    if (ingredients.length === 0) {
+      return res.status(400).json({ error: "No valid ingredients were provided after filtering." });
+    }
+
+    const ingredientsString = ingredients.join(",");
+    console.log("Ingredients string for Spoonacular API:", ingredientsString);
+
+    const response = await axios.get(
+      `https://api.spoonacular.com/recipes/findByIngredients?ingredients=${ingredientsString}&apiKey=${SPOONACULAR_API_KEY}${
+        dietType ? `&diet=${dietType}` : ""
+      }`
+    );
+
+    if (response.data.length === 0) {
+      return res.status(404).send("No recipes found.");
+    }
+
+    const detailedRecipes = await Promise.all(
+      response.data.map(async (recipe) => {
+        const recipeDetailResponse = await axios.get(
+          `https://api.spoonacular.com/recipes/${recipe.id}/information?apiKey=${SPOONACULAR_API_KEY}`
+        );
+        const { title, readyInMinutes, instructions, extendedIngredients } = recipeDetailResponse.data;
+
+        const usedIngredients = extendedIngredients.map((ing) => ing.name).join(", ");
+
+        return `Recipe Name: ${title}\nCooking Time: ${readyInMinutes} minutes\nIngredients: ${usedIngredients}\nInstructions: ${instructions}\n\n`;
+      })
+    );
+
+    res.send(`<pre>${detailedRecipes.join("\n\n")}</pre>`);
+  } catch (error) {
+    console.error("Error fetching recipes:", error.message);
+    res.status(500).json({ error: "Error fetching recipes from API." });
+  }
+});
+
+
 // Signup
 app.post("/signup", async (req, res) => {
   try {

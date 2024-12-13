@@ -1,6 +1,7 @@
 {
   "name": "my-homepage",
   "version": "0.1.0",
+    "proxy": "https://recettemagique.onrender.com",
   "private": true,
   "dependencies": {
     "@testing-library/react": "^13.4.0",

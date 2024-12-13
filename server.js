@@ -38,17 +38,20 @@ const MongoStore = require("connect-mongo");
 app.use(
   session({
     secret: process.env.SESSION_SECRET || "1234",
-    resave: true,
+    resave: true, // Important to resave
     saveUninitialized: false,
     cookie: {
-      secure: process.env.NODE_ENV === "production", // Secure cookies in production
+      secure: process.env.NODE_ENV === "production",
       httpOnly: true,
       sameSite: "none", // Required for cross-origin cookies
-      domain: ".onrender.com", // Must match the server's domain
-      maxAge: 1000 * 60 * 60 * 24, // 1 day
+      domain: ".onrender.com", // Ensure this matches your environment
     },
+    store: MongoStore.create({ mongoUrl: mongoURI , collectionName: "sessions"}), // Ensure MongoStore is properly configured
+
+    }),
   })
 );
+
 
 app.use((req, res, next) => {
   console.log("Session ID:", req.sessionID);
@@ -331,19 +334,20 @@ app.post("/login", async (req, res) => {
 
     // 6. Save session and redirect to the appropriate page
     req.session.save((err) => {
-      if (err) {
-        console.error("Session save error:", err);
-        return res.status(500).json({ error: "Session error" });
-      }
+  if (err) {
+    console.error("Session save error:", err);
+    return res.status(500).json({ error: "Session error" });
+  }
 
-      // Redirect to dashboard if dietType is set, otherwise to preferences page
-      const redirectUrl = "/dashboard";
-      res.status(200).json({
-        message: "Login successful",
-        user: req.session.user,
-        redirectUrl,
-      });
-    });
+  console.log("Session successfully saved:", req.session.user); // Log session data
+  const redirectUrl = "/dashboard"; // Adjust based on your logic
+  res.status(200).json({
+    message: "Login successful",
+    user: req.session.user,
+    redirectUrl,
+  });
+});
+e
   } catch (error) {
     console.error("Error during login:", error);
     res.status(500).json({ error: "Server error" });

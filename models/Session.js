@@ -1,32 +1,14 @@
 // models/Session.js
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
-// Define the session schema
 const sessionSchema = new mongoose.Schema({
-  userId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',  // Reference to the User collection
-    required: true,
+  sessionID: { type: String, required: true, unique: true },
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  dietType: { type: String, default: 'Not Set' },
+  foodPreferences: {
+    dietType: { type: String, default: 'Not Set' },
   },
-  fullName: {
-    type: String,
-    required: true,
-  },
-  email: {
-    type: String,
-    required: true,
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now,  // Store the time the session was created
-  },
-  expiresAt: {
-    type: Date,
-    required: true,  // When this session will expire
-  },
-}, { collection: 'sessions' });
+  createdAt: { type: Date, default: Date.now },
+});
 
-// Create the session model
-const Session = mongoose.model('Session', sessionSchema);
-
-module.exports = Session;
+module.exports = mongoose.model("Session", sessionSchema);

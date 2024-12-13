@@ -7,7 +7,7 @@ const userSchema = new mongoose.Schema({
     password: { type: String, required: true },
     token: { type: String },
     isVerified: { type: Boolean, default: false },
-    foodPreferences: { type: Object, default: {} } // Optional food preferences
+    foodPreferences: { type: String, default: "None" } // Optional food preferences
 }, { collection: 'Users' }); // Specify the collection name
 
 // Create the model based on the schema

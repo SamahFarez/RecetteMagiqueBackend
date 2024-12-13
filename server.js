@@ -134,10 +134,11 @@ app.post("/signup", async (req, res) => {
   try {
     const { fullName, email, password, foodPreferences } = req.body;
 
+    console.log("Received foodPreferences:", foodPreferences); // Log received foodPreferences
+
     // Check if the user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      console.log("Signup attempt failed: User already exists");
       return res.status(400).json({ message: "User already exists" });
     }
 
@@ -154,47 +155,34 @@ app.post("/signup", async (req, res) => {
       password: hashedPassword,
       token,
       isVerified: false,
-      foodPreferences: foodPreferences || "None", // Default to "None" if not provided
+      foodPreferences: foodPreferences || "None", // Default to 'None' if not provided
     });
 
     await newUser.save();
 
-    // Create the email confirmation link
-    const confirmationLink = `https://recettemagique.onrender.com/confirm/${token}`;
-
-    // Email options
+    // Email confirmation logic
+    const confirmationLink = `https://your-frontend-domain.com/confirm/${token}`;
     const mailOptions = {
-      from: "recette.magique.cy@gmail.com",
+      from: "your-email@gmail.com",
       to: email,
-      subject: "Email Confirmation",
-      html: `<h1>Welcome ${fullName}!</h1>
-                   <p>Please confirm your email by clicking the link: 
-                   <a href="${confirmationLink}">Confirm Email</a></p>`,
+      subject: "Please confirm your email",
+      html: `<p>Please confirm your email by clicking <a href="${confirmationLink}">here</a></p>`,
     };
 
-    // Configure the email transporter
     const transporter = nodemailer.createTransport({
       service: "gmail",
       auth: {
-        user: "recette.magique.cy@gmail.com",
-        pass: "jyoj afjs utcm swwe",
+        user: "your-email@gmail.com",
+        pass: "your-email-password",
       },
     });
 
-    // Send the confirmation email
     transporter.sendMail(mailOptions, (error, info) => {
       if (error) {
         console.error("Error sending email:", error);
-        return res
-          .status(500)
-          .json({ message: "Error sending confirmation email" });
+        return res.status(500).json({ message: "Error sending confirmation email" });
       }
-      console.log("Confirmation email sent:", info.response);
-      res
-        .status(200)
-        .json({
-          message: "User registered successfully, please confirm your email",
-        });
+      res.status(200).json({ message: "User registered successfully, please confirm your email" });
     });
   } catch (error) {
     console.error("Error during signup:", error);

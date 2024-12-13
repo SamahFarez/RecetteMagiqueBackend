@@ -104,12 +104,13 @@ const filterIngredientsByDietType = (ingredients, dietType) => {
 // Middleware
 app.use(
   cors({
-    origin: ["http://localhost:3000", "https://recette-magique.vercel.app"],
-    credentials: true, // Allow credentials (cookies) in CORS
+    origin: ["http://localhost:3000", "https://recette-magique.vercel.app"], // Add frontend origin
+    credentials: true, // Enable cookies in cross-origin requests
     methods: ["GET", "POST", "PUT", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
+
 
 // MongoDB Connection
 const mongoURI =
@@ -124,13 +125,12 @@ app.use(
     secret: process.env.SESSION_SECRET || "1234",
     resave: false,
     saveUninitialized: false,
-    store: MongoStore.create({ mongoUrl: mongoURI }),
     cookie: {
-      secure: process.env.NODE_ENV === "production",
+      secure: process.env.NODE_ENV === "production", // Secure cookies in production
       httpOnly: true,
-      sameSite: "none",
-      domain: ".onrender.com",
-      maxAge: 1000 * 60 * 60 * 24,
+      sameSite: "none", // Required for cross-origin cookies
+      domain: ".onrender.com", // Must match the server's domain
+      maxAge: 1000 * 60 * 60 * 24, // 1 day
     },
   })
 );
@@ -401,14 +401,13 @@ app.post("/login", async (req, res) => {
       email: user.email,
       foodPreferences: { dietType: dietType },
     };
-
+    
     req.session.save((err) => {
       if (err) {
         console.error("Session save error:", err);
         return res.status(500).json({ error: "Session error" });
       }
-
-      // Redirect to preferences page if dietType is not set
+      console.log("Session after login:", req.session);
       const redirectUrl = dietType ? "/dashboard" : "/preferences";
       res.status(200).json({
         message: "Login successful",
@@ -416,11 +415,7 @@ app.post("/login", async (req, res) => {
         redirectUrl,
       });
     });
-  } catch (error) {
-    console.error("Error during login:", error);
-    res.status(500).json({ error: "Server error" });
-  }
-});
+    
 
 
 // Email confirmation

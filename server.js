@@ -29,6 +29,13 @@ const mongoURI =
   "mongodb+srv://hh:hhhhhhhh@cluster0.5eb3y.mongodb.net/recette?retryWrites=true&w=majority";
 
 const session = require('express-session');
+const express = require('express');
+const cookieParser = require('cookie-parser');
+
+const app = express();
+
+// Use cookie-parser middleware
+app.use(cookieParser());
 
 app.use(session({
   secret: '123456', // Replace with a strong secret

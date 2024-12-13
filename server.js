@@ -287,6 +287,8 @@ app.post("/signup", async (req, res) => {
 });
 
 
+const Session = require("./models/Session"); // Import the custom session model
+
 app.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -312,28 +314,37 @@ app.post("/login", async (req, res) => {
       return res.status(401).json({ error: "Incorrect password" });
     }
 
-    // Set the session data
-    req.session.user = {
-      id: user._id,
+    // Generate a unique session ID
+    const sessionId = crypto.randomBytes(32).toString("hex");
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 1 day expiration
+
+    // Store session data in the custom session model
+    const sessionData = new Session({
+      sessionId,
+      userId: user._id,
       fullName: user.full_name,
       email: user.email,
-    };
+      expiresAt,
+    });
 
-    // Save the session and send a response
-    req.session.save((err) => {
-      if (err) {
-        console.error("Session save error:", err);
-        return res.status(500).json({ error: "Session error" });
-      }
+    await sessionData.save();
 
-      console.log("Session successfully saved:", req.session.user); // Log session data
-      const redirectUrl = "/dashboard"; // Adjust based on your logic
-      // Send response only once
-      return res.status(200).json({
-        message: "Login successful",
-        user: req.session.user,
-        redirectUrl,
-      });
+    // Set the session cookie with the custom sessionId
+    res.cookie("sessionId", sessionId, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production", // Ensure cookies are secure in production
+      sameSite: "None", // Required for cross-origin cookies
+      maxAge: 24 * 60 * 60 * 1000, // 1 day expiration
+    });
+
+    // Send a successful response with a redirect URL
+    return res.status(200).json({
+      message: "Login successful",
+      user: {
+        fullName: user.full_name,
+        email: user.email,
+      },
+      redirectUrl: "/dashboard", // Redirect URL after successful login
     });
 
   } catch (error) {
@@ -341,8 +352,6 @@ app.post("/login", async (req, res) => {
     return res.status(500).json({ error: "Server error" });
   }
 });
-
-
 
 // Email confirmation
 app.get("/confirm/:token", async (req, res) => {

@@ -30,6 +30,7 @@ app.use(
 );
 
 app.use(express.json());
+const mongoURI = "mongodb+srv://hh:hhhhhhhh@cluster0.5eb3y.mongodb.net/recette?retryWrites=true&w=majority";
 
 const MongoStore = require("connect-mongo");
 
@@ -44,7 +45,7 @@ app.use(
       sameSite: "None",  // Required for cross-origin cookies
       domain: ".onrender.com", // Adjust for your domain setup
     },
-    store: MongoStore.create({ mongoUrl: process.env.MONGO_URI, collectionName: "sessions" }),
+    store: MongoStore.create({ mongoUrl: mongoURI, collectionName: "sessions" }),
   })
 );
 

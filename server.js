@@ -6,7 +6,7 @@ const session = require("express-session");
 const nodemailer = require("nodemailer");
 const crypto = require("crypto");
 const axios = require("axios");
-
+const cookieParser = require('cookie-parser');
 require("dotenv").config(); // Load environment variables
 
 const User = require("./models/User"); // Import User schema
@@ -27,10 +27,6 @@ app.use(
 app.use(express.json());
 const mongoURI =
   "mongodb+srv://hh:hhhhhhhh@cluster0.5eb3y.mongodb.net/recette?retryWrites=true&w=majority";
-
-const session = require('express-session');
-const express = require('express');
-const cookieParser = require('cookie-parser');
 
 const app = express();
 

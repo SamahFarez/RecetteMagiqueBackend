@@ -173,31 +173,39 @@ app.get('/api/user-preferences', async (req, res) => {
   }
 });
 
+// Signup
 app.post("/signup", async (req, res) => {
   try {
     const { fullName, email, password, foodPreferences } = req.body;
 
+    // Check if the user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ message: "User already exists" });
     }
 
+    // Hash the password
     const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Generate a unique token for email verification
     const token = crypto.randomBytes(32).toString("hex");
 
+    // Create a new user
     const newUser = new User({
       full_name: fullName,
       email,
       password: hashedPassword,
       token,
       isVerified: false,
-      foodPreferences: foodPreferences || {},
+      foodPreferences: foodPreferences || "None", // Default to "None" if not provided
     });
 
     await newUser.save();
 
+    // Create the email confirmation link
     const confirmationLink = `https://recettemagique.onrender.com/confirm/${token}`;
 
+    // Email options
     const mailOptions = {
       from: "recette.magique.cy@gmail.com",
       to: email,
@@ -207,29 +215,36 @@ app.post("/signup", async (req, res) => {
                    <a href="${confirmationLink}">Confirm Email</a></p>`,
     };
 
+    // Configure the email transporter
     const transporter = nodemailer.createTransport({
       service: "gmail",
       auth: {
         user: "recette.magique.cy@gmail.com",
-        pass: process.env.EMAIL_PASSWORD, // Use environment variable for sensitive data
+        pass: "jyoj afjs utcm swwe",
       },
     });
 
+    // Send the confirmation email
     transporter.sendMail(mailOptions, (error, info) => {
       if (error) {
         console.error("Error sending email:", error);
-        return res.status(500).json({ message: "Error sending confirmation email" });
+        return res
+          .status(500)
+          .json({ message: "Error sending confirmation email" });
       }
       console.log("Confirmation email sent:", info.response);
-      res.status(200).json({
-        message: "User registered successfully, please confirm your email",
-      });
+      res
+        .status(200)
+        .json({
+          message: "User registered successfully, please confirm your email",
+        });
     });
   } catch (error) {
     console.error("Error during signup:", error);
     res.status(500).json({ message: "Server error" });
   }
 });
+
 
 app.post("/login", async (req, res) => {
   try {

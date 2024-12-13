@@ -23,21 +23,19 @@ const SPOONACULAR_API_KEY = "725e92e0455f4cc5bcf3cf289d5fc86e"; // Replace with 
 app.use(
   cors({
     origin: ["http://localhost:3000", "https://recette-magique.vercel.app"], // Make sure both frontend URLs are here
-    credentials: true, // Ensure credentials (cookies) are allowed
+    credentials: true, // Allow cookies to be sent with requests
     methods: ["GET", "POST", "PUT", "DELETE"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"], // Make sure the necessary headers are allowed
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
   })
 );
 
 app.use(express.json());
 const mongoURI = "mongodb+srv://hh:hhhhhhhh@cluster0.5eb3y.mongodb.net/recette?retryWrites=true&w=majority";
 
-const MongoStore = require("connect-mongo");
-
 app.use(
   session({
     secret: process.env.SESSION_SECRET || "1234",
-    resave: true, // Important to resave
+    resave: true,
     saveUninitialized: false,
     cookie: {
       secure: process.env.NODE_ENV === "production", // Ensure cookies are secure in production
@@ -94,6 +92,7 @@ const retrieveSession = async (req, res, next) => {
     res.status(500).json({ error: "Server error" });
   }
 };
+
 
 // Routes
 app.get('/api/user-preferences', async (req, res) => {
@@ -216,15 +215,8 @@ app.post("/login", async (req, res) => {
 
     await sessionData.save();
 
-    // Set the session cookie
-res.cookie("sessionId", sessionId, {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === "production", 
-  sameSite: "None", 
-  maxAge: 24 * 60 * 60 * 1000, // 1 day expiration
-});
-
-
+    // Now the session is stored in the database, no need to set it in a cookie
+    // You can return user data or a success message
     return res.status(200).json({
       message: "Login successful",
       user: {
@@ -239,6 +231,7 @@ res.cookie("sessionId", sessionId, {
     return res.status(500).json({ error: "Server error" });
   }
 });
+
 
 // Logout Route
 app.post("/logout", async (req, res) => {

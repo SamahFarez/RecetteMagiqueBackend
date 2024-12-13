@@ -12,4 +12,4 @@ const RestrictionsSchema = new mongoose.Schema({
   },
 });
 
-module.exports = mongoose.model("Restrictions", RestrictionsSchema);
+module.exports = mongoose.model("restrictions", RestrictionsSchema);

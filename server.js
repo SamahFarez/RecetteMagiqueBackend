@@ -376,39 +376,45 @@ app.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
 
+    // 1. Retrieve user data from the User table
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(401).json({ error: "User not found" });
     }
 
+    // 2. Check if the email is verified
     if (!user.isVerified) {
       return res
         .status(403)
         .json({ error: "Email not confirmed. Please check your inbox." });
     }
 
+    // 3. Compare the password
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({ error: "Incorrect password" });
     }
 
-    // Check if user has preferences set
-    const dietType = user.foodPreferences?.dietType;
+    // 4. Retrieve restriction data from the UserRestriction table
+    const userRestriction = await UserRestriction.findOne({ userId: user._id });
+    const dietType = userRestriction ? userRestriction.restrictionName : null;
 
+    // 5. Set the session data
     req.session.user = {
       id: user._id,
       fullName: user.full_name,
       email: user.email,
-      foodPreferences: { dietType: dietType },
+      foodPreferences: { dietType: dietType || 'Not Set' }, // Set food preferences from restriction data
     };
 
+    // 6. Save session and redirect to the appropriate page
     req.session.save((err) => {
       if (err) {
         console.error("Session save error:", err);
         return res.status(500).json({ error: "Session error" });
       }
 
-      // Redirect to preferences page if dietType is not set
+      // Redirect to dashboard if dietType is set, otherwise to preferences page
       const redirectUrl = dietType ? "/dashboard" : "/preferences";
       res.status(200).json({
         message: "Login successful",
@@ -421,6 +427,7 @@ app.post("/login", async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 });
+
 
 
 // Email confirmation

@@ -123,7 +123,7 @@ const MongoStore = require("connect-mongo");
 app.use(
   session({
     secret: process.env.SESSION_SECRET || "1234",
-    resave: false,
+    resave: true,
     saveUninitialized: false,
     cookie: {
       secure: process.env.NODE_ENV === "production", // Secure cookies in production
@@ -401,13 +401,14 @@ app.post("/login", async (req, res) => {
       email: user.email,
       foodPreferences: { dietType: dietType },
     };
-    
+
     req.session.save((err) => {
       if (err) {
         console.error("Session save error:", err);
         return res.status(500).json({ error: "Session error" });
       }
-      console.log("Session after login:", req.session);
+
+      // Redirect to preferences page if dietType is not set
       const redirectUrl = dietType ? "/dashboard" : "/preferences";
       res.status(200).json({
         message: "Login successful",
@@ -415,7 +416,11 @@ app.post("/login", async (req, res) => {
         redirectUrl,
       });
     });
-    
+  } catch (error) {
+    console.error("Error during login:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
 
 
 // Email confirmation

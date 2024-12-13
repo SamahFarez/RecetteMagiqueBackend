@@ -371,7 +371,6 @@ app.post("/signup", async (req, res) => {
   }
 });
 
-
 app.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -407,12 +406,18 @@ app.post("/login", async (req, res) => {
       foodPreferences: { dietType: dietType || 'Not Set' }, // Set food preferences from restriction data
     };
 
+    // Log session before saving
+    console.log('Session before save:', req.session);
+
     // 6. Save session and redirect to the appropriate page
     req.session.save((err) => {
       if (err) {
         console.error("Session save error:", err);
         return res.status(500).json({ error: "Session error" });
       }
+
+      // Log session after saving
+      console.log('Session after save:', req.session);
 
       // Redirect to dashboard if dietType is set, otherwise to preferences page
       const redirectUrl = dietType ? "/dashboard" : "/preferences";
@@ -427,6 +432,7 @@ app.post("/login", async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 });
+
 
 
 

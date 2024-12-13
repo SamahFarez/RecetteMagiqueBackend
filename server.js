@@ -10,98 +10,12 @@ const axios = require("axios");
 require("dotenv").config(); // Load environment variables
 
 const User = require("./models/User"); // Import User schema
-const User = require("./models/UserRestriction"); // Import User schema
-const User = require("./models/Restrictions"); // Import User schema
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Constants
 const SPOONACULAR_API_KEY = "725e92e0455f4cc5bcf3cf289d5fc86e"; // Replace with your Spoonacular API key
-
-
-// Dietary restriction arrays for different diets
-const VEGETARIAN_RESTRICTED_INGREDIENTS = [
-    "chicken", "beef", "pork", "lamb", "turkey", "duck", "fish", "seafood"
-  ];
-  
-  const VEGAN_RESTRICTED_INGREDIENTS = [
-    "chicken", "beef", "pork", "lamb", "turkey", "duck", "fish", "seafood", "milk", "cheese", "butter", "eggs"
-  ];
-  
-  const PESCO_VEGETARIAN_RESTRICTED_INGREDIENTS = [
-    "chicken", "beef", "pork", "lamb", "turkey", "duck", "seafood" // Pesco-vegetarian includes fish, but not other meats
-  ];
-  
-  const GLUTEN_FREE_RESTRICTED_INGREDIENTS = [
-    "wheat", "barley", "rye", "oats"
-  ];
-  
-  const DAIRY_FREE_RESTRICTED_INGREDIENTS = [
-    "milk", "cheese", "butter", "cream"
-  ];
-  
-  const NUT_FREE_RESTRICTED_INGREDIENTS = [
-    "almond", "cashew", "hazelnut", "walnut", "peanut", "pecan"
-  ];
-  
-  const SOYA_FREE_RESTRICTED_INGREDIENTS = [
-    "tofu", "tempeh", "soy", "edamame", "soy sauce"
-  ];
-  
-  const EGG_FREE_RESTRICTED_INGREDIENTS = [
-    "egg", "mayonnaise", "mayo"
-  ];
-  
-  const HALAL_RESTRICTED_INGREDIENTS = [
-    "pork", "alcohol"
-  ];
-  
-  const OMNIVORE_RESTRICTED_INGREDIENTS = [] // Omnivores are not restricted
-  
-// Helper function to filter ingredients based on dietType
-const filterIngredientsByDietType = (ingredients, dietType) => {
-    let restrictedIngredients = [];
-  
-    switch (dietType) {
-      case 'Végétalien (Vegan)':
-        restrictedIngredients = VEGAN_RESTRICTED_INGREDIENTS;
-        break;
-      case 'Végétarien':
-        restrictedIngredients = VEGETARIAN_RESTRICTED_INGREDIENTS;
-        break;
-      case 'Pesco-végétarien':
-        restrictedIngredients = PESCO_VEGETARIAN_RESTRICTED_INGREDIENTS;
-        break;
-      case 'Sans Gluten':
-        restrictedIngredients = GLUTEN_FREE_RESTRICTED_INGREDIENTS;
-        break;
-      case 'Sans Produits Laitiers':
-        restrictedIngredients = DAIRY_FREE_RESTRICTED_INGREDIENTS;
-        break;
-      case 'Sans Noix':
-        restrictedIngredients = NUT_FREE_RESTRICTED_INGREDIENTS;
-        break;
-      case 'Sans Soja':
-        restrictedIngredients = SOYA_FREE_RESTRICTED_INGREDIENTS;
-        break;
-      case 'Sans Œufs':
-        restrictedIngredients = EGG_FREE_RESTRICTED_INGREDIENTS;
-        break;
-      case 'Halal':
-        restrictedIngredients = HALAL_RESTRICTED_INGREDIENTS;
-        break;
-      case 'Omnivore':
-        restrictedIngredients = OMNIVORE_RESTRICTED_INGREDIENTS;
-        break;
-      default:
-        return ingredients; // If no diet type is set, return all ingredients
-    }
-  
-    // Filter out ingredients that are in the restricted list for the given dietType
-    return ingredients.filter(ingredient => !restrictedIngredients.includes(ingredient.toLowerCase()));
-  };
-  
 
 // Middleware
 app.use(
@@ -112,7 +26,6 @@ app.use(
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
-
 
 // MongoDB Connection
 const mongoURI =
@@ -136,8 +49,6 @@ app.use(
     },
   })
 );
-
-
 
 app.use((req, res, next) => {
   console.log("Session ID:", req.sessionID);
@@ -398,6 +309,7 @@ app.post("/login", async (req, res) => {
     }
 
     // 4. Retrieve restriction data from the UserRestriction table
+    console.log("User ID for restriction query HEEEEEEEEEEEEEEEEEERE", user._id);
     const userRestriction = await UserRestriction.findOne({ userId: user._id });
     console.log("User Restrictions:", userRestriction ? userRestriction : "NO USER RESTRICTION FOUND IN TABLE"); // Log restriction data
     const dietType = userRestriction ? userRestriction.restrictionName : null;
@@ -408,7 +320,7 @@ app.post("/login", async (req, res) => {
       id: user._id,
       fullName: user.full_name,
       email: user.email,
-      foodPreferences: { dietType: dietType || 'Not Set' }, // Set food preferences from restriction data
+      foodPreferences: { dietType: dietType }, // Set food preferences from restriction data
     };
 
     // 6. Save session and redirect to the appropriate page

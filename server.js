@@ -150,28 +150,28 @@ app.post("/api/save-preferences", async (req, res) => {
 
 
 
-// Routes
 app.get('/api/user-preferences', async (req, res) => {
-    if (!req.session.user) {
-      return res.status(401).json({ error: 'User not authenticated' });
+  const { sessionID } = req.cookies;
+
+  if (!sessionID) {
+    return res.status(401).json({ error: 'User not authenticated' });
+  }
+
+  try {
+    const session = await Session.findOne({ sessionID }).populate('userId');
+
+    if (!session) {
+      return res.status(404).json({ error: 'Session not found' });
     }
-  
-    try {
-      const user = await User.findOne({ email: req.session.user.email });
-  
-      if (!user) {
-        return res.status(404).json({ error: 'User not found' });
-      }
-  
-      // Ensure the user preferences (including dietType) are returned
-      const dietType = user.foodPreferences.dietType || 'Not Set';
-      
-      res.status(200).json({ dietType });  // Send the dietType as a response
-    } catch (error) {
-      console.error('Error fetching user preferences:', error);
-      res.status(500).json({ error: 'Server error' });
-    }
-  });
+
+    const dietType = session.dietType;
+
+    res.status(200).json({ dietType }); // Send the dietType as a response
+  } catch (error) {
+    console.error('Error fetching user preferences:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
 
 app.post("/signup", async (req, res) => {
   try {
@@ -231,6 +231,8 @@ app.post("/signup", async (req, res) => {
   }
 });
 
+const Session = require("./models/Session"); // Import Session model
+
 app.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -243,7 +245,9 @@ app.post("/login", async (req, res) => {
 
     // 2. Check if the email is verified
     if (!user.isVerified) {
-      return res.status(403).json({ error: "Email not confirmed. Please check your inbox." });
+      return res
+        .status(403)
+        .json({ error: "Email not confirmed. Please check your inbox." });
     }
 
     // 3. Compare the password
@@ -256,39 +260,28 @@ app.post("/login", async (req, res) => {
     const userRestriction = await UserRestriction.findOne({ userId: user._id });
     const dietType = userRestriction ? userRestriction.restrictionName : null;
 
-    // 5. Create the session ID and expiration time (e.g., 24 hours)
-    const sessionId = crypto.randomBytes(16).toString("hex");
-    const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24);  // 24 hours expiration
+    // 5. Generate a unique session ID
+    const sessionID = crypto.randomBytes(16).toString("hex");
 
-    // 6. Save the session to the database
-    const newSession = new Session({
+    // 6. Save the session in the Session table
+    const session = new Session({
+      sessionID,
       userId: user._id,
-      fullName: user.full_name,
-      email: user.email,
-      expiresAt,
+      dietType: dietType || 'Not Set',
+      foodPreferences: { dietType: dietType || 'Not Set' },
     });
+    await session.save();
 
-    await newSession.save();
-    console.log("Session successfully saved in the database.");
-
-    // 7. Set the session ID in the cookie
-    res.cookie("sessionId", sessionId, {
+    // 7. Send the sessionID as a cookie and return the user data
+    res.cookie("sessionID", sessionID, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",  // Secure cookies for production
-      sameSite: "None",  // For cross-origin cookies
-      expires: expiresAt, // Cookie expiration time
+      maxAge: 1000 * 60 * 60 * 24, // 1 day
     });
 
-    // 8. Send response
     res.status(200).json({
       message: "Login successful",
-      user: {
-        id: user._id,
-        fullName: user.full_name,
-        email: user.email,
-        foodPreferences: { dietType: dietType || "Not Set" },  // User preferences
-      },
-      redirectUrl: dietType ? "/dashboard" : "/preferences",  // Redirect URL
+      user: { id: user._id, fullName: user.full_name, email: user.email, foodPreferences: { dietType: dietType || 'Not Set' }},
+      redirectUrl: dietType ? "/dashboard" : "/preferences",
     });
   } catch (error) {
     console.error("Error during login:", error);
@@ -297,33 +290,53 @@ app.post("/login", async (req, res) => {
 });
 
 
-// Logout Route
+// Email confirmation
+app.get("/confirm/:token", async (req, res) => {
+  try {
+    const token = req.params.token;
+
+    const user = await User.findOne({ token });
+    if (!user) {
+      return res
+        .status(400)
+        .json({ message: "Invalid token or user already verified" });
+    }
+
+    if (user.isVerified) {
+      return res.redirect("http://localhost:3000/login");
+    }
+
+    user.isVerified = true;
+    user.token = null;
+    await user.save();
+
+    res.redirect("http://localhost:3000/login");
+  } catch (error) {
+    console.error("Error confirming token:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// Dashboard
+app.get("/dashboard", (req, res) => {
+  if (req.session.user) {
+    res.json({ message: "Welcome to the dashboard!", user: req.session.user });
+  }
+});
+
+
 app.post("/logout", async (req, res) => {
   try {
-    const sessionId = req.cookies.sessionId;
+    const { sessionID } = req.cookies;
 
-    if (!sessionId) {
-      return res.status(400).json({ error: "No active session found" });
-    }
+    // Delete the session from the Session table
+    await Session.findOneAndDelete({ sessionID });
 
-    // Find and delete the session from the database
-    const session = await Session.findOneAndDelete({ sessionId });
-
-    if (!session) {
-      return res.status(400).json({ error: "Session not found" });
-    }
-
-    // Clear the session cookie
-    res.clearCookie("sessionId", {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",  // Secure cookies for production
-      sameSite: "None",  // For cross-origin cookies
-    });
-
+    res.clearCookie("sessionID"); // Clear the session cookie
     res.status(200).json({ message: "Logged out successfully" });
   } catch (error) {
-    console.error("Error during logout:", error);
-    return res.status(500).json({ error: "Server error" });
+    console.error("Error logging out:", error);
+    res.status(500).json({ error: "Failed to log out" });
   }
 });
 

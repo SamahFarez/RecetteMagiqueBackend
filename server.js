@@ -10,7 +10,6 @@ const axios = require("axios");
 require("dotenv").config(); // Load environment variables
 
 const User = require("./models/User"); // Import User schema
-const MongoStore = require('connect-mongo');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -105,34 +104,33 @@ const filterIngredientsByDietType = (ingredients, dietType) => {
 // Middleware
 app.use(
   cors({
-    origin: ["http://localhost:3000", "https://recette-magique.vercel.app"], // Add all allowed origins here
+    origin: ["http://localhost:3000", "https://recette-magique.vercel.app"],
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE"],
-    allowedHeaders: ["Content-Type"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
-
 // MongoDB Connection
 const mongoURI =
   "mongodb+srv://hh:hhhhhhhh@cluster0.5eb3y.mongodb.net/recette?retryWrites=true&w=majority";
 
 app.use(express.json());
 
-app.use(session({
-  secret: '1234',
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    secure: process.env.NODE_ENV === 'production', // Only secure in production
-    httpOnly: true,
-    sameSite: 'strict', // Adjust as per your app's requirements
-    maxAge: 86400000, // 24 hours
-  },
-store: MongoStore.create({
-    mongoUrl: 'mongodb+srv://hh:hhhhhhhh@cluster0.5eb3y.mongodb.net/recette?retryWrites=true&w=majority', // Replace with your MongoDB connection string
-  }),}));
-
-
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || "1234",
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: process.env.NODE_ENV === 'production', // Only use secure in production
+      sameSite: 'none', // Important for cross-site requests
+      httpOnly: true,
+      maxAge: 1000 * 60 * 60 * 24, // 1 day
+      domain: process.env.NODE_ENV === 'production' ? '.onrender.com' : 'localhost'
+    },
+    name: "sessionId",
+  })
+);
 app.use((req, res, next) => {
   console.log("Session ID:", req.sessionID);
   console.log("Session Data:", req.session);
@@ -181,37 +179,41 @@ app.get('/api/user-preferences', async (req, res) => {
 
 const UserRestriction = require("./models/UserRestriction"); // Import the new model
 app.post("/api/save-preferences", async (req, res) => {
-  console.log('Request body:', req.body);  // This will help debug if the request is reaching the server
+  console.log("Request body:", req.body);
 
   if (!req.session.user) {
     return res.status(401).json({ error: "User not authenticated" });
   }
 
   try {
-    const { dietType } = req.body; // e.g., Halal, Vegan, etc.
-
-    // Find the user in the database
+    const { dietType } = req.body;
     const user = await User.findOne({ email: req.session.user.email });
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
 
-    // Update the session with preferences
+    req.session.user.foodPreferences = req.session.user.foodPreferences || {};
     req.session.user.foodPreferences.dietType = dietType;
 
-    // Save the restriction in the UserRestriction table
     await UserRestriction.findOneAndUpdate(
       { userId: user._id },
       { restrictionName: dietType },
       { upsert: true, new: true }
     );
 
-    res.status(200).json({ message: "Preferences saved successfully!" });
+    req.session.save((err) => {
+      if (err) {
+        console.error("Session save error:", err);
+        return res.status(500).json({ error: "Session save error" });
+      }
+      res.status(200).json({ message: "Preferences saved successfully!" });
+    });
   } catch (error) {
     console.error("Error saving preferences:", error);
     res.status(500).json({ error: "Server error" });
   }
 });
+
 
 
 
@@ -400,7 +402,14 @@ app.post("/login", async (req, res) => {
         return res.status(500).json({ error: "Session error" });
       }
 
-      // Redirect to preferences page if dietType is not set
+      // Set explicit cookie settings in the response
+      res.cookie('sessionId', req.sessionID, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'none',
+        maxAge: 24 * 60 * 60 * 1000 // 1 day
+      });
+
       const redirectUrl = dietType ? "/dashboard" : "/preferences";
       res.status(200).json({
         message: "Login successful",
@@ -413,7 +422,6 @@ app.post("/login", async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 });
-
 
 // Email confirmation
 app.get("/confirm/:token", async (req, res) => {

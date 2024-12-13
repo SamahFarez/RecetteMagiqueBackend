@@ -47,10 +47,8 @@ app.use(
       domain: ".onrender.com", // Ensure this matches your environment
     },
     store: MongoStore.create({ mongoUrl: mongoURI , collectionName: "sessions"}), // Ensure MongoStore is properly configured
-
-    }),
-  })
-);
+  }),
+)
 
 
 app.use((req, res, next) => {

@@ -24,7 +24,7 @@ const sessionSchema = new mongoose.Schema({
     type: Date,
     required: true,  // When this session will expire
   },
-});
+}, { collection: 'sessions' });
 
 // Create the session model
 const Session = mongoose.model('Session', sessionSchema);

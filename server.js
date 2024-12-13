@@ -20,12 +20,13 @@ const SPOONACULAR_API_KEY = "725e92e0455f4cc5bcf3cf289d5fc86e"; // Replace with 
 // Middleware
 app.use(
   cors({
-    origin: ["http://localhost:3000", "https://recette-magique.vercel.app"], // Add frontend origin
-    credentials: true, // Enable cookies in cross-origin requests
+    origin: ["http://localhost:3000", "https://recette-magique.vercel.app"], // Make sure both frontend URLs are here
+    credentials: true, // Ensure credentials (cookies) are allowed
     methods: ["GET", "POST", "PUT", "DELETE"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"], // Make sure the necessary headers are allowed
   })
 );
+
 
 // MongoDB Connection
 const mongoURI =
@@ -41,14 +42,14 @@ app.use(
     resave: true, // Important to resave
     saveUninitialized: false,
     cookie: {
-      secure: process.env.NODE_ENV === "production",
-      httpOnly: true,
-      sameSite: "none", // Required for cross-origin cookies
-      domain: ".onrender.com", // Ensure this matches your environment
+      secure: process.env.NODE_ENV === "production", // Ensure cookies are secure in production
+      httpOnly: true,  // Prevents access to cookie via JavaScript
+      sameSite: "None",  // Required for cross-origin cookies
+      domain: ".onrender.com", // Adjust for your domain setup
     },
-    store: MongoStore.create({ mongoUrl: mongoURI , collectionName: "sessions"}), // Ensure MongoStore is properly configured
-  }),
-)
+    store: MongoStore.create({ mongoUrl: mongoURI, collectionName: "sessions" }),
+  })
+);
 
 
 app.use((req, res, next) => {

@@ -10,6 +10,7 @@ const axios = require("axios");
 require("dotenv").config(); // Load environment variables
 
 const User = require("./models/User"); // Import User schema
+const MongoStore = require('connect-mongo');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -127,8 +128,9 @@ app.use(session({
     sameSite: 'strict', // Adjust as per your app's requirements
     maxAge: 86400000, // 24 hours
   },
-  store: new MongoStore({ mongooseConnection: mongoose.connection }) // or other persistent stores
-}));
+store: MongoStore.create({
+    mongoUrl: 'mongodb+srv://hh:hhhhhhhh@cluster0.5eb3y.mongodb.net/recette?retryWrites=true&w=majority', // Replace with your MongoDB connection string
+  }),}));
 
 
 app.use((req, res, next) => {

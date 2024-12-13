@@ -309,22 +309,22 @@ app.post("/login", async (req, res) => {
     }
 
     // 4. Retrieve restriction data from the UserRestriction table
-    console.log("User ID for restriction query:", user._id);
-    const userRestriction = await UserRestriction.findOne({ userId: user._id });
-    const dietType = userRestriction ? userRestriction.restrictionName : null;
+    // console.log("User ID for restriction query:", user._id);
+    // const userRestriction = await UserRestriction.findOne({ userId: user._id });
+    // const dietType = userRestriction ? userRestriction.restrictionName : null;
 
-    console.log(
-      "User Restrictions:",
-      userRestriction ? userRestriction : "NO USER RESTRICTION FOUND IN TABLE"
-    );
-    console.log("Diet Type:", dietType || "NO DIET FOUND");
+    // console.log(
+    //   "User Restrictions:",
+    //   userRestriction ? userRestriction : "NO USER RESTRICTION FOUND IN TABLE"
+    // );
+    // console.log("Diet Type:", dietType || "NO DIET FOUND");
 
     // 5. Set the session data (always include user data even if dietType is null)
     req.session.user = {
       id: user._id,
       fullName: user.full_name,
       email: user.email,
-      foodPreferences: { dietType: dietType || null }, // Set dietType to null if not found
+      // foodPreferences: { dietType: dietType || null }, // Set dietType to null if not found
     };
 
     // 6. Save session and redirect to the appropriate page
@@ -335,7 +335,7 @@ app.post("/login", async (req, res) => {
       }
 
       // Redirect to dashboard if dietType is set, otherwise to preferences page
-      const redirectUrl = dietType ? "/dashboard" : "/preferences";
+      const redirectUrl = "/dashboard";
       res.status(200).json({
         message: "Login successful",
         user: req.session.user,

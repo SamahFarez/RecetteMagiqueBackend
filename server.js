@@ -231,8 +231,6 @@ app.post("/signup", async (req, res) => {
   }
 });
 
-const Session = require("./models/Session"); // Import Session model
-
 app.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;

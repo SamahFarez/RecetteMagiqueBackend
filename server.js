@@ -269,6 +269,7 @@ app.post("/login", async (req, res) => {
     });
 
     await newSession.save();
+    console.log("Session successfully saved in the database.");
 
     // 7. Set the session ID in the cookie
     res.cookie("sessionId", sessionId, {

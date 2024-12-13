@@ -371,6 +371,7 @@ app.post("/signup", async (req, res) => {
   }
 });
 
+
 app.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -396,7 +397,9 @@ app.post("/login", async (req, res) => {
 
     // 4. Retrieve restriction data from the UserRestriction table
     const userRestriction = await UserRestriction.findOne({ userId: user._id });
+    console.log("User Restrictions:", userRestriction ? userRestriction : "NO USER RESTRICTION FOUND IN TABLE"); // Log restriction data
     const dietType = userRestriction ? userRestriction.restrictionName : null;
+    console.log("User Restrictions:", dietType ? dietType : "NO DIET FOUND"); // Log restriction data
 
     // 5. Set the session data
     req.session.user = {
@@ -406,18 +409,12 @@ app.post("/login", async (req, res) => {
       foodPreferences: { dietType: dietType || 'Not Set' }, // Set food preferences from restriction data
     };
 
-    // Log session before saving
-    console.log('Session before save:', req.session);
-
     // 6. Save session and redirect to the appropriate page
     req.session.save((err) => {
       if (err) {
         console.error("Session save error:", err);
         return res.status(500).json({ error: "Session error" });
       }
-
-      // Log session after saving
-      console.log('Session after save:', req.session);
 
       // Redirect to dashboard if dietType is set, otherwise to preferences page
       const redirectUrl = dietType ? "/dashboard" : "/preferences";
@@ -432,9 +429,6 @@ app.post("/login", async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 });
-
-
-
 
 // Email confirmation
 app.get("/confirm/:token", async (req, res) => {

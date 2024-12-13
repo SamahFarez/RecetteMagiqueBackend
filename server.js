@@ -291,7 +291,7 @@ app.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // 1. Retrieve user data from the User table
+    // Retrieve user data from the User table
     const user = await User.findOne({ email });
     console.log("Retrieved user object:", JSON.stringify(user, null, 2));
 
@@ -299,53 +299,49 @@ app.post("/login", async (req, res) => {
       return res.status(401).json({ error: "User not found" });
     }
 
-    // 2. Check if the email is verified
+    // Check if the email is verified
     if (!user.isVerified) {
       return res
         .status(403)
         .json({ error: "Email not confirmed. Please check your inbox." });
     }
 
-    // 3. Compare the password
+    // Compare the password
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({ error: "Incorrect password" });
     }
 
-    // 4. Retrieve restriction data from the UserRestriction table
-    console.log("User ID for restriction query:", user._id);
-    // const userRestriction = await UserRestriction.findOne({ userId: user._id });
-    // const dietType = userRestriction ? userRestriction.restrictionName : null;
-
-    // console.log(
-    //   "User Restrictions:",
-    //   userRestriction ? userRestriction : "NO USER RESTRICTION FOUND IN TABLE"
-    // );
-    // console.log("Diet Type:", dietType || "NO DIET FOUND");
-
-    // 5. Set the session data (always include user data even if dietType is null)
+    // Set the session data
     req.session.user = {
       id: user._id,
       fullName: user.full_name,
       email: user.email,
-      // foodPreferences: { dietType: dietType || null }, // Set dietType to null if not found
     };
 
-    // 6. Save session and redirect to the appropriate page
+    // Save the session and send a response
     req.session.save((err) => {
-  if (err) {
-    console.error("Session save error:", err);
-    return res.status(500).json({ error: "Session error" });
-  }
+      if (err) {
+        console.error("Session save error:", err);
+        return res.status(500).json({ error: "Session error" });
+      }
 
-  console.log("Session successfully saved:", req.session.user); // Log session data
-  const redirectUrl = "/dashboard"; // Adjust based on your logic
-  res.status(200).json({
-    message: "Login successful",
-    user: req.session.user,
-    redirectUrl,
-  });
+      console.log("Session successfully saved:", req.session.user); // Log session data
+      const redirectUrl = "/dashboard"; // Adjust based on your logic
+      // Send response only once
+      return res.status(200).json({
+        message: "Login successful",
+        user: req.session.user,
+        redirectUrl,
+      });
+    });
+
+  } catch (error) {
+    console.error("Error during login:", error);
+    return res.status(500).json({ error: "Server error" });
+  }
 });
+
 
 
 // Email confirmation

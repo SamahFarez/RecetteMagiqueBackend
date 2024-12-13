@@ -303,7 +303,6 @@ app.post("/login", async (req, res) => {
 });
 
 
-// Email confirmation
 app.get("/confirm/:token", async (req, res) => {
   try {
     const token = req.params.token;
@@ -316,14 +315,14 @@ app.get("/confirm/:token", async (req, res) => {
     }
 
     if (user.isVerified) {
-      return res.redirect("http://localhost:3000/login");
+      return res.redirect("https://recette-magique.vercel.app/login");
     }
 
     user.isVerified = true;
     user.token = null;
     await user.save();
 
-    res.redirect("http://localhost:3000/login");
+    res.redirect("https://recette-magique.vercel.app/login");
   } catch (error) {
     console.error("Error confirming token:", error);
     res.status(500).json({ message: "Server error" });

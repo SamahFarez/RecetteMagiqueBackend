@@ -10,6 +10,7 @@ const axios = require("axios");
 require("dotenv").config(); // Load environment variables
 
 const User = require("./models/User"); // Import User schema
+const Session = require("./models/Session"); // Import User schema
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -26,9 +27,6 @@ app.use(
     allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"], // Make sure the necessary headers are allowed
   })
 );
-
-
-const Session = require("../models/Session");
 
 const retrieveSession = async (req, res, next) => {
   const sessionId = req.cookies.sessionId;

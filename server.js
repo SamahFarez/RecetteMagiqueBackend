@@ -309,18 +309,22 @@ app.post("/login", async (req, res) => {
     }
 
     // 4. Retrieve restriction data from the UserRestriction table
-    console.log("User ID for restriction query HEEEEEEEEEEEEEEEEEERE", user._id);
+    console.log("User ID for restriction query:", user._id);
     const userRestriction = await UserRestriction.findOne({ userId: user._id });
-    console.log("User Restrictions:", userRestriction ? userRestriction : "NO USER RESTRICTION FOUND IN TABLE"); // Log restriction data
     const dietType = userRestriction ? userRestriction.restrictionName : null;
-    console.log("User Restrictions:", dietType ? dietType : "NO DIET FOUND"); // Log restriction data
 
-    // 5. Set the session data
+    console.log(
+      "User Restrictions:",
+      userRestriction ? userRestriction : "NO USER RESTRICTION FOUND IN TABLE"
+    );
+    console.log("Diet Type:", dietType || "NO DIET FOUND");
+
+    // 5. Set the session data (always include user data even if dietType is null)
     req.session.user = {
       id: user._id,
       fullName: user.full_name,
       email: user.email,
-      foodPreferences: { dietType: dietType }, // Set food preferences from restriction data
+      foodPreferences: { dietType: dietType || null }, // Set dietType to null if not found
     };
 
     // 6. Save session and redirect to the appropriate page
@@ -343,6 +347,7 @@ app.post("/login", async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 });
+
 
 // Email confirmation
 app.get("/confirm/:token", async (req, res) => {

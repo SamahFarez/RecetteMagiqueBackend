@@ -291,6 +291,8 @@ app.post("/login", async (req, res) => {
 
     // 1. Retrieve user data from the User table
     const user = await User.findOne({ email });
+    console.log("Retrieved user object:", JSON.stringify(user, null, 2));
+
     if (!user) {
       return res.status(401).json({ error: "User not found" });
     }
@@ -309,7 +311,7 @@ app.post("/login", async (req, res) => {
     }
 
     // 4. Retrieve restriction data from the UserRestriction table
-    // console.log("User ID for restriction query:", user._id);
+    console.log("User ID for restriction query:", user._id);
     // const userRestriction = await UserRestriction.findOne({ userId: user._id });
     // const dietType = userRestriction ? userRestriction.restrictionName : null;
 

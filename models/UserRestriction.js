@@ -5,4 +5,4 @@ const userRestrictionSchema = new mongoose.Schema({
   restrictionName: { type: String, required: true },
 });
 
-module.exports = mongoose.model("userrestrictions", userRestrictionSchema);
+module.exports = mongoose.model("UserRestrictions", userRestrictionSchema);

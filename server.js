@@ -28,6 +28,40 @@ app.use(
 );
 
 
+const Session = require("../models/Session");
+
+const retrieveSession = async (req, res, next) => {
+  const sessionId = req.cookies.sessionId;
+
+  if (!sessionId) {
+    return res.status(401).json({ error: "Session not found" });
+  }
+
+  try {
+    const session = await Session.findOne({ sessionId });
+
+    if (!session) {
+      return res.status(401).json({ error: "Invalid session" });
+    }
+
+    // Check if the session has expired
+    if (new Date() > session.expiresAt) {
+      await Session.findByIdAndDelete(session._id); // Optional: delete expired session
+      return res.status(401).json({ error: "Session expired" });
+    }
+
+    // Attach session data to the request object
+    req.session = session;
+    next();
+  } catch (error) {
+    console.error("Error retrieving session:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+};
+
+module.exports = retrieveSession;
+
+
 // MongoDB Connection
 const mongoURI =
   "mongodb+srv://hh:hhhhhhhh@cluster0.5eb3y.mongodb.net/recette?retryWrites=true&w=majority";
@@ -287,8 +321,6 @@ app.post("/signup", async (req, res) => {
 });
 
 
-const Session = require("./models/Session"); // Import the custom session model
-
 app.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -381,11 +413,18 @@ app.get("/confirm/:token", async (req, res) => {
 });
 
 // Dashboard
-app.get("/dashboard", (req, res) => {
-  if (req.session.user) {
-    res.json({ message: "Welcome to the dashboard!", user: req.session.user });
-  }
+app.get("/dashboard", retrieveSession, (req, res) => {
+  const user = req.session;
+
+  res.status(200).json({
+    message: "Welcome to the dashboard!",
+    user: {
+      fullName: user.fullName,
+      email: user.email,
+    },
+  });
 });
+
 
 // Logout route
 app.post("/logout", (req, res) => {

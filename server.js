@@ -28,20 +28,22 @@ app.use(express.json());
 const mongoURI =
   "mongodb+srv://hh:hhhhhhhh@cluster0.5eb3y.mongodb.net/recette?retryWrites=true&w=majority";
 
-app.use(
-  session({
-    secret: process.env.SESSION_SECRET || "1234",
-    resave: true,
-    saveUninitialized: false,
-    cookie: {
-      secure: process.env.NODE_ENV === "production", // Secure cookies for production
-      httpOnly: true, // Prevents access to cookies via JavaScript
-      maxAge: 1000 * 60 * 60 * 24 * 7, // Persistent cookie: 1 week
-      sameSite: "None", // Required for cross-origin cookies
-      domain: ".onrender.com", // Adjust for your domain setup
-    },
-  })
-);
+const session = require('express-session');
+
+app.use(session({
+  secret: '123456', // Replace with a strong secret
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    path: '/',
+    httpOnly: true,
+    secure: true, // Ensure HTTPS
+    sameSite: 'None', // For cross-site cookies
+    domain: '.onrender.com', // Adjust to match your domain
+    maxAge: 7 * 24 * 60 * 60 * 1000 // 1 week
+  }
+}));
+
 
 // MongoDB Connection
 mongoose

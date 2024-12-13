@@ -60,12 +60,6 @@ mongoose
   .catch((err) => console.error("Error connecting to MongoDB Atlas: ", err));
 
 // Helper functions
-const filterNonVegetarianIngredients = (ingredients) => {
-  return ingredients.filter(
-    (ingredient) => !MEAT_KEYWORDS.includes(ingredient.toLowerCase())
-  );
-};
-
 const cleanRecipeName = (title) => {
   return title.replace(/^How to Make\s+/i, ""); // Remove 'How to' at the beginning of the title
 };
@@ -79,7 +73,8 @@ const retrieveSession = async (req, res, next) => {
   }
 
   try {
-    const session = await Session.findOne({ sessionId });
+    // Retrieve session from the database
+    const session = await Session.findOne({ sessionId }).populate('userId');
 
     if (!session) {
       return res.status(401).json({ error: "Invalid session" });
@@ -87,18 +82,22 @@ const retrieveSession = async (req, res, next) => {
 
     // Check if the session has expired
     if (new Date() > session.expiresAt) {
-      await Session.findByIdAndDelete(session._id); // Optional: delete expired session
+      // Optionally delete expired session
+      await Session.findByIdAndDelete(session._id);
       return res.status(401).json({ error: "Session expired" });
     }
 
     // Attach session data to the request object
     req.session = session;
+    req.session.user = session.userId;  // Attach user data
+
     next();
   } catch (error) {
     console.error("Error retrieving session:", error);
     res.status(500).json({ error: "Server error" });
   }
 };
+
 
 
 // Routes
@@ -194,9 +193,7 @@ app.post("/login", async (req, res) => {
 
     // 2. Check if the email is verified
     if (!user.isVerified) {
-      return res
-        .status(403)
-        .json({ error: "Email not confirmed. Please check your inbox." });
+      return res.status(403).json({ error: "Email not confirmed. Please check your inbox." });
     }
 
     // 3. Compare the password
@@ -207,32 +204,40 @@ app.post("/login", async (req, res) => {
 
     // 4. Retrieve restriction data from the UserRestriction table
     const userRestriction = await UserRestriction.findOne({ userId: user._id });
-    console.log("User Restrictions:", userRestriction ? userRestriction : "NO USER RESTRICTION FOUND IN TABLE"); // Log restriction data
     const dietType = userRestriction ? userRestriction.restrictionName : null;
-    console.log("User Restrictions:", dietType ? dietType : "NO DIET FOUND"); // Log restriction data
 
-    // 5. Set the session data
-    req.session.user = {
-      id: user._id,
+    // 5. Create the session ID and expiration time (e.g., 24 hours)
+    const sessionId = crypto.randomBytes(16).toString("hex");
+    const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24);  // 24 hours expiration
+
+    // 6. Save the session to the database
+    const newSession = new Session({
+      userId: user._id,
       fullName: user.full_name,
       email: user.email,
-      foodPreferences: { dietType: dietType || 'Not Set' }, // Set food preferences from restriction data
-    };
+      expiresAt,
+    });
 
-    // 6. Save session and redirect to the appropriate page
-    req.session.save((err) => {
-      if (err) {
-        console.error("Session save error:", err);
-        return res.status(500).json({ error: "Session error" });
-      }
+    await newSession.save();
 
-      // Redirect to dashboard if dietType is set, otherwise to preferences page
-      const redirectUrl = dietType ? "/dashboard" : "/preferences";
-      res.status(200).json({
-        message: "Login successful",
-        user: req.session.user,
-        redirectUrl,
-      });
+    // 7. Set the session ID in the cookie
+    res.cookie("sessionId", sessionId, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",  // Secure cookies for production
+      sameSite: "None",  // For cross-origin cookies
+      expires: expiresAt, // Cookie expiration time
+    });
+
+    // 8. Send response
+    res.status(200).json({
+      message: "Login successful",
+      user: {
+        id: user._id,
+        fullName: user.full_name,
+        email: user.email,
+        foodPreferences: { dietType: dietType || "Not Set" },  // User preferences
+      },
+      redirectUrl: dietType ? "/dashboard" : "/preferences",  // Redirect URL
     });
   } catch (error) {
     console.error("Error during login:", error);
@@ -260,8 +265,8 @@ app.post("/logout", async (req, res) => {
     // Clear the session cookie
     res.clearCookie("sessionId", {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "None",
+      secure: process.env.NODE_ENV === "production",  // Secure cookies for production
+      sameSite: "None",  // For cross-origin cookies
     });
 
     res.status(200).json({ message: "Logged out successfully" });
@@ -270,6 +275,7 @@ app.post("/logout", async (req, res) => {
     return res.status(500).json({ error: "Server error" });
   }
 });
+
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);

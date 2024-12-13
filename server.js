@@ -117,19 +117,19 @@ const mongoURI =
 
 app.use(express.json());
 
-app.use(
-  session({
-    secret: process.env.SESSION_SECRET || "1234",
-    resave: false, // changed from true to false
-    saveUninitialized: false,
-    cookie: {
-      secure: process.env.NODE_ENV === "development", // Fixed the secure setting
-      httpOnly: true,
-      maxAge: 1000 * 60 * 60 * 24, // 1 day
-    },
-    name: "sessionId", // Add this line to use a custom cookie name
-  })
-);
+app.use(session({
+  secret: '1234',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production', // Only secure in production
+    httpOnly: true,
+    sameSite: 'strict', // Adjust as per your app's requirements
+    maxAge: 86400000, // 24 hours
+  },
+  store: new MongoStore({ mongooseConnection: mongoose.connection }) // or other persistent stores
+}));
+
 
 app.use((req, res, next) => {
   console.log("Session ID:", req.sessionID);

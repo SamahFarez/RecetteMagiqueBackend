@@ -323,51 +323,50 @@ app.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Retrieve user data from the User table
     const user = await User.findOne({ email });
-    console.log("Retrieved user object:", JSON.stringify(user, null, 2));
 
     if (!user) {
       return res.status(401).json({ error: "User not found" });
     }
 
-    // Check if the email is verified
     if (!user.isVerified) {
       return res
         .status(403)
         .json({ error: "Email not confirmed. Please check your inbox." });
     }
 
-    // Compare the password
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({ error: "Incorrect password" });
     }
 
-    // Generate a unique session ID
+    // Retrieve the user's dietType from the UserRestriction model
+    const userRestriction = await UserRestriction.findOne({ userId: user._id });
+    const dietType = userRestriction ? userRestriction.restrictionName : "Not Set"; // Default to "Not Set" if no restriction is found
+
     const sessionId = crypto.randomBytes(32).toString("hex");
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 1 day expiration
 
-    // Store session data in the custom session model
+    // Create session data and include dietType from UserRestriction
     const sessionData = new Session({
       sessionId,
       userId: user._id,
       fullName: user.full_name,
       email: user.email,
       expiresAt,
+      dietType,  // Store dietType in session
     });
 
     await sessionData.save();
 
-    // Set the session cookie with the custom sessionId
+    // Set the session cookie
     res.cookie("sessionId", sessionId, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production", // Ensure cookies are secure in production
-      sameSite: "None", // Required for cross-origin cookies
-      maxAge: 24 * 60 * 60 * 1000, // 1 day expiration
+      secure: process.env.NODE_ENV === "production", 
+      sameSite: "None", 
+      maxAge: 24 * 60 * 60 * 1000, 
     });
 
-    // Send a successful response with a redirect URL
     return res.status(200).json({
       message: "Login successful",
       user: {
@@ -382,6 +381,7 @@ app.post("/login", async (req, res) => {
     return res.status(500).json({ error: "Server error" });
   }
 });
+
 
 // Email confirmation
 app.get("/confirm/:token", async (req, res) => {
@@ -424,17 +424,39 @@ app.get("/dashboard", retrieveSession, (req, res) => {
 });
 
 
-// Logout route
-app.post("/logout", (req, res) => {
-  req.session.destroy((err) => {
-    if (err) {
-      return res.status(500).json({ error: "Failed to log out" });
+app.post("/logout", async (req, res) => {
+  try {
+    const sessionId = req.cookies.sessionId;
+
+    if (!sessionId) {
+      return res.status(400).json({ error: "No active session found" });
     }
 
-    res.clearCookie("connect.sid"); // Clear the session cookie
+    // Find and delete the session from the database
+    const session = await Session.findOneAndDelete({ sessionId });
+
+    if (!session) {
+      return res.status(400).json({ error: "Session not found" });
+    }
+
+    // Check if dietType is not set in the session, and if so, redirect to preferences
+    if (!session.dietType || session.dietType === "Not Set") {
+      return res.status(200).json({
+        message: "Logged out successfully. Please set your preferences.",
+        redirectToPreferences: true,
+      });
+    }
+
+    // Clear the session cookie
+    res.clearCookie("sessionId");
+
     res.status(200).json({ message: "Logged out successfully" });
-  });
+  } catch (error) {
+    console.error("Error during logout:", error);
+    res.status(500).json({ error: "Failed to log out" });
+  }
 });
+
 
 // Start the server
 app.listen(PORT, () => {

@@ -179,56 +179,57 @@ app.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
 
+    // 1. Retrieve user data from the User table
     const user = await User.findOne({ email });
-
     if (!user) {
       return res.status(401).json({ error: "User not found" });
     }
 
+    // 2. Check if the email is verified
     if (!user.isVerified) {
       return res
         .status(403)
         .json({ error: "Email not confirmed. Please check your inbox." });
     }
 
+    // 3. Compare the password
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({ error: "Incorrect password" });
     }
 
-    // Retrieve the user's dietType from the UserRestriction model
+    // 4. Retrieve restriction data from the UserRestriction table
     const userRestriction = await UserRestriction.findOne({ userId: user._id });
-    const dietType = userRestriction ? userRestriction.restrictionName : "Not Set"; // Default to "Not Set" if no restriction is found
+    console.log("User Restrictions:", userRestriction ? userRestriction : "NO USER RESTRICTION FOUND IN TABLE"); // Log restriction data
+    const dietType = userRestriction ? userRestriction.restrictionName : null;
+    console.log("User Restrictions:", dietType ? dietType : "NO DIET FOUND"); // Log restriction data
 
-    const sessionId = crypto.randomBytes(32).toString("hex");
-    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 1 day expiration
-
-    // Create session data and include dietType from UserRestriction
-    const sessionData = new Session({
-      sessionId,
-      userId: user._id,
+    // 5. Set the session data
+    req.session.user = {
+      id: user._id,
       fullName: user.full_name,
       email: user.email,
-      expiresAt,
-      dietType,  // Store dietType in session
+      foodPreferences: { dietType: dietType || 'Not Set' }, // Set food preferences from restriction data
+    };
+
+    // 6. Save session and redirect to the appropriate page
+    req.session.save((err) => {
+      if (err) {
+        console.error("Session save error:", err);
+        return res.status(500).json({ error: "Session error" });
+      }
+
+      // Redirect to dashboard if dietType is set, otherwise to preferences page
+      const redirectUrl = dietType ? "/dashboard" : "/preferences";
+      res.status(200).json({
+        message: "Login successful",
+        user: req.session.user,
+        redirectUrl,
+      });
     });
-
-    await sessionData.save();
-
-    // Now the session is stored in the database, no need to set it in a cookie
-    // You can return user data or a success message
-    return res.status(200).json({
-      message: "Login successful",
-      user: {
-        fullName: user.full_name,
-        email: user.email,
-      },
-      redirectUrl: "/dashboard", // Redirect URL after successful login
-    });
-
   } catch (error) {
     console.error("Error during login:", error);
-    return res.status(500).json({ error: "Server error" });
+    res.status(500).json({ error: "Server error" });
   }
 });
 

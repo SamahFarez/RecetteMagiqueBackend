@@ -346,12 +346,6 @@ app.post("/login", async (req, res) => {
     redirectUrl,
   });
 });
-e
-  } catch (error) {
-    console.error("Error during login:", error);
-    res.status(500).json({ error: "Server error" });
-  }
-});
 
 
 // Email confirmation

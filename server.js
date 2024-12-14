@@ -126,6 +126,18 @@ app.get("/fetch-recipes/:ingredients", async (req, res) => {
   }
 });
 
+app.get("/session", (req, res) => {
+  if (req.session.userId) {
+    res.json({
+      message: 'Session data retrieved successfully',
+      sessionId: req.sessionID,  // This is the session ID
+      userId: req.session.userId,  // Assuming you store the userId in session
+    });
+  } else {
+    res.status(401).json({ message: "No active session found" });
+  }
+});
+
 
 // Signup
 app.post("/signup", async (req, res) => {

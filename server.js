@@ -17,12 +17,14 @@ const PORT = process.env.PORT || 5000;
 // Middleware
 app.use(
   cors({
-    origin: ["http://localhost:3000", "https://recette-magique.vercel.app"], // Frontend URLs
-    credentials: true, // Allow cookies to be sent with requests
-    methods: ["GET", "POST", "PUT", "DELETE"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+    origin: "https://recette-magique.vercel.app", // or your frontend URL
+    credentials: true, // Allow credentials (cookies)
+    methods: ["GET", "POST"],
+    allowedHeaders: ["Content-Type"],
   })
 );
+
+
 
 app.use(express.json());
 const mongoURI =
@@ -31,20 +33,29 @@ const mongoURI =
 // Use cookie-parser middleware
 app.use(cookieParser());
 
-app.use(session({
-  secret: '123456', // Replace with a strong secret
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    path: '/',
-    httpOnly: true,
-    secure: true, // Ensure HTTPS
-    sameSite: 'None', // For cross-site cookies
-    domain: '.onrender.com', // Adjust to match your domain
-    maxAge: 7 * 24 * 60 * 60 * 1000 // 1 week
-  }
-}));
+app.use(
+  session({
+    secret: "your-secret-key",
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      path: '/',
+      httpOnly: true,
+      secure: true, // Change to `false` for local development without HTTPS
+      sameSite: 'None', // Required for cross-origin cookies
+      domain: '.onrender.com', // Ensure this matches your backend's domain
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 1 week
+    },
+  })
+);
 
+app.use((req, res, next) => {
+  console.log("Incoming headers:", req.headers);
+  res.on('finish', () => {
+    console.log("Response headers:", res.getHeaders());
+  });
+  next();
+});
 
 // MongoDB Connection
 mongoose
